@@ -38,8 +38,18 @@ def match_person_to_target(person, target):
             if skill.lower() in {s.lower() for s in person.skills}
         ]
         reasons.append(
-            f"Skill match: {', '.join(matched)}"
+            f"Skill match: {', '.join(matched)} ({skill_match * 100:.0f}% of required skills)"
         )
+
+        missing = [
+            skill for skill in target.required_skills
+            if skill.lower() not in {s.lower() for s in person.skills}
+        ]
+
+        if missing:
+            reasons.append(
+                f"Missing skills: {', '.join(missing)}"
+            )
 
     if location_match > 0:
         reasons.append(

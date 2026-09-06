@@ -65,8 +65,26 @@ def query(query: str):
     return query_sang(query)
 from data.resources import resources
 
-from backend.main import app
 
 @app.get("/resources")
 def get_resources():
     return resources
+from backend.resource_matching import find_resource_matches
+
+@app.get("/problems/{problem_id}/resources")
+def get_problem_resources(problem_id: str):
+    problem = next(
+        (problem for problem in problems if problem.id == problem_id),
+        None
+    )
+
+    if problem is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Problem not found"
+        )
+
+    return {
+        "problem": problem,
+        "resources": find_resource_matches(problem)
+    }

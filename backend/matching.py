@@ -12,7 +12,6 @@ def calculate_skill_match(person_skills, required_skills):
 
     return len(matched_skills) / len(required_skills_lower)
 
-
 def calculate_interest_match(person_interests, target_category):
     if not target_category:
         return 0.0
@@ -20,7 +19,23 @@ def calculate_interest_match(person_interests, target_category):
     interests_lower = {interest.lower() for interest in person_interests}
     category = target_category.lower()
 
-    return 1.0 if category in interests_lower else 0.0
+    if category in interests_lower:
+        return 1.0
+
+    related_concepts = {
+        "sustainability": {"circular economy"},
+        "agriculture": {"rural development"},
+        "education": {"teaching"},
+        "ai": {"machine learning"},
+        "rural development": {"community outreach"},
+    }
+
+    related = related_concepts.get(category, set())
+
+    if interests_lower.intersection(related):
+        return 0.5
+
+    return 0.0
 
 
 def calculate_location_match(person_location, target_location):

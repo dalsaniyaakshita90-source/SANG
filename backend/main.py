@@ -63,3 +63,10 @@ def get_matches(person_id: str):
 @app.get("/query")
 def query(query: str):
     return query_sang(query)
+from data.resources import resources
+
+from backend.main import app
+
+@app.get("/resources")
+def get_resources():
+    return resources

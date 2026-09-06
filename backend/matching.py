@@ -14,8 +14,16 @@ def calculate_skill_match(person_skills, required_skills):
 
 
 def calculate_location_match(person_location, target_location):
-    return 1.0 if person_location.lower() == target_location.lower() else 0.0
+    person = person_location.lower()
+    target = target_location.lower()
 
+    if person == target:
+        return 1.0
+
+    if person == "gujarat" or target == "gujarat":
+        return 0.5
+
+    return 0.0
 
 def match_person_to_target(person, target):
     skill_match = calculate_skill_match(

@@ -21,7 +21,7 @@ people = [
     Person(
         id="P003",
         name="Meera",
-        location="Rajkot",
+        location="Gujarat",
         skills=["teaching", "Gujarati", "community outreach"],
         interests=["education", "rural development"],
         availability="weekends"

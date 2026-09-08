@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>SANG â€” 333 Access Layer</title>
+    <title>SANG -- 333 Access Layer</title>
 
     <style>
         * {
@@ -291,7 +291,7 @@
     >
 
     <button id="voiceButton" type="button">
-        ðŸŽ™ï¸ Speak
+        &#127908;&#65039; Speak
     </button>
 
     <button id="sendButton">
@@ -406,7 +406,7 @@ function addAgricultureResult(result) {
 
         html += `
             <div class="result-section">
-                <h3>ðŸ‘¤ Local Helper</h3>
+                <h3>&#128100; Local Helper</h3>
                 <p>${helper.name}</p>
             </div>
         `;
@@ -419,7 +419,7 @@ function addAgricultureResult(result) {
 
         html += `
             <div class="result-section">
-                <h3>ðŸ“˜ Resource</h3>
+                <h3>&#128214; Resource</h3>
                 <p>${resource.name}</p>
             </div>
         `;
@@ -432,7 +432,7 @@ function addAgricultureResult(result) {
 
         html += `
             <div class="result-section">
-                <h3>ðŸŽ¯ Opportunity</h3>
+                <h3>&#127919; Opportunity</h3>
                 <p>${opportunity.title}</p>
             </div>
         `;
@@ -548,7 +548,7 @@ function handleSangResponse(data) {
 
 
     // ---------------------------------------------------------
-    // ASSISTANCE â€” MISSING INFORMATION
+    // ASSISTANCE -- MISSING INFORMATION
     // ---------------------------------------------------------
 
     if (
@@ -572,7 +572,7 @@ function handleSangResponse(data) {
 
 
     // ---------------------------------------------------------
-    // ASSISTANCE â€” ROUTED
+    // ASSISTANCE -- ROUTED
     // ---------------------------------------------------------
 
     if (
@@ -698,7 +698,7 @@ function setupVoiceRecognition() {
         const button = document.getElementById("voiceButton");
 
         if (button) {
-            button.textContent = "ðŸ”´ Listening...";
+            button.textContent = "\uD83D\uDD34 Listening...";
         }
     };
 
@@ -729,7 +729,7 @@ function setupVoiceRecognition() {
         const button = document.getElementById("voiceButton");
 
         if (button) {
-            button.textContent = "ðŸŽ™ï¸ Speak";
+            button.textContent = "\uD83C\uDF99\uFE0F Speak";
         }
     };
 
@@ -740,7 +740,7 @@ function setupVoiceRecognition() {
         const button = document.getElementById("voiceButton");
 
         if (button) {
-            button.textContent = "ðŸŽ™ï¸ Speak";
+            button.textContent = "\uD83C\uDF99\uFE0F Speak";
         }
     };
 }

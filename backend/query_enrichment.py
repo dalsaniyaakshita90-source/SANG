@@ -1,4 +1,6 @@
 from backend.resource_matching import find_resource_matches
+from data.demo_data import problems
+
 
 def enrich_query_results(results):
     enriched = []

@@ -1,5 +1,6 @@
 from .query_parser import parse_query
 from .matching_engine import find_matches
+from .query_enrichment import enrich_query_results
 from data.demo_data import people, problems, opportunities
 
 
@@ -37,5 +38,5 @@ def query_sang(query: str):
     return {
         "query": query,
         "understood": parsed,
-        "results": results
+        "results": enrich_query_results(results)
     }

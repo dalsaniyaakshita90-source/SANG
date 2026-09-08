@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>SANG — 333 Demo</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #172033;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .brand {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        .tagline {
+            margin-top: 8px;
+            color: #667085;
+            font-size: 15px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+        }
+
+        .label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #667085;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .conversation {
+            min-height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+
+        .user {
+            background: #172033;
+            color: white;
+            margin-left: auto;
+        }
+
+        .sang {
+            background: #eef2f7;
+            color: #172033;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 14px;
+            border: 1px solid #d0d5dd;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+
+        button {
+            border: none;
+            border-radius: 10px;
+            padding: 14px 22px;
+            background: #172033;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .result-section {
+            display: none;
+        }
+
+        .result-title {
+            font-size: 24px;
+            margin-bottom: 6px;
+        }
+
+        .result-description {
+            color: #667085;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+        }
+
+        .result-box {
+            border: 1px solid #e4e7ec;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .result-box h3 {
+            margin-top: 0;
+            font-size: 15px;
+        }
+
+        .result-box p {
+            color: #667085;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: #ecfdf3;
+            color: #027a48;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 700px) {
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .input-row {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <div class="brand">SANG</div>
+        <div class="tagline">
+            Connective intelligence for people, problems, resources and opportunities.
+        </div>
+    </div>
+
+    <div class="card">
+
+        <div class="label">333 Access Layer</div>
+
+        <div id="conversation" class="conversation">
+            <div class="message sang">
+                Hello. I am SANG through 333.<br><br>
+                Tell me what you need help with.
+            </div>
+        </div>
+
+        <div class="input-row">
+            <input
+                id="messageInput"
+                type="text"
+                placeholder="Type your request..."
+            >
+
+            <button onclick="sendMessage()">
+                Send
+            </button>
+        </div>
+
+    </div>
+
+    <div id="resultSection" class="card result-section">
+
+        <div class="label">SANG Routing Result</div>
+
+        <div id="resultContent"></div>
+
+    </div>
+
+</div>
+
+<script>
+
+const API_BASE = "http://127.0.0.1:8000";
+
+let sessionId = null;
+
+function addMessage(text, type) {
+
+    const conversation = document.getElementById("conversation");
+
+    const message = document.createElement("div");
+
+    message.className = `message ${type}`;
+
+    message.innerHTML = text;
+
+    conversation.appendChild(message);
+
+    conversation.scrollTop = conversation.scrollHeight;
+}
+
+async function sendMessage() {
+
+    const input = document.getElementById("messageInput");
+
+    const message = input.value.trim();
+
+    if (!message) {
+        return;
+    }
+
+    addMessage(message, "user");
+
+    input.value = "";
+
+    try {
+
+        let response;
+
+        if (!sessionId) {
+
+            response = await fetch(`${API_BASE}/333`, {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    message: message
+                })
+
+            });
+
+        } else {
+
+            response = await fetch(
+                `${API_BASE}/333/${sessionId}`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        message: message
+                    })
+                }
+            );
+        }
+
+        const data = await response.json();
+
+        sessionId = data.session_id;
+
+        handleResponse(data);
+
+    } catch (error) {
+
+        addMessage(
+            "I could not connect to the SANG backend. Please make sure the server is running.",
+            "sang"
+        );
+
+    }
+}
+
+function handleResponse(data) {
+
+    if (data.status === "NEEDS_INFORMATION") {
+
+        addMessage(
+            data.prompt || "I need a little more information.",
+            "sang"
+        );
+
+        return;
+    }
+
+    if (data.status === "ESCALATE") {
+
+        addMessage(
+            "This request should be escalated to human or emergency services.",
+            "sang"
+        );
+
+        return;
+    }
+
+    if (data.status === "ROUTED") {
+
+        addMessage(
+            "I found a relevant route for you.",
+            "sang"
+        );
+
+        showResult(data);
+
+    }
+
+}
+
+function showResult(data) {
+
+    const section = document.getElementById("resultSection");
+
+    const content = document.getElementById("resultContent");
+
+    const result = data.result;
+
+    if (!result || !result.results || result.results.length === 0) {
+
+        content.innerHTML = `
+            <div class="result-title">
+                No direct match found
+            </div>
+            <div class="result-description">
+                SANG could not find a verified route in the current prototype dataset.
+            </div>
+        `;
+
+        section.style.display = "block";
+
+        return;
+    }
+
+    const first = result.results[0];
+
+    const problem = first.problem;
+
+    const helper = first.helpers[0];
+
+    const resource = first.resources[0];
+
+    const opportunity = first.opportunities[0];
+
+    content.innerHTML = `
+
+        <div class="result-title">
+            ${problem.title}
+        </div>
+
+        <div class="result-description">
+            ${problem.description}
+            <br>
+            <strong>Location:</strong> ${problem.location}
+        </div>
+
+        <div class="result-grid">
+
+            <div class="result-box">
+                <h3>👤 Local Helper</h3>
+                <p>
+                    ${
+                        helper
+                            ? helper.name
+                            : "No verified helper found."
+                    }
+                </p>
+            </div>
+
+            <div class="result-box">
+                <h3>📘 Resource</h3>
+                <p>
+                    ${
+                        resource
+                            ? resource.name
+                            : "No matching resource found."
+                    }
+                </p>
+            </div>
+
+            <div class="result-box">
+                <h3>🎯 Opportunity</h3>
+                <p>
+                    ${
+                        opportunity
+                            ? opportunity.title
+                            : "No matching opportunity found."
+                    }
+                </p>
+            </div>
+
+        </div>
+
+        <div class="status">
+            ROUTED BY SANG
+        </div>
+    `;
+
+    section.style.display = "block";
+}
+
+document
+    .getElementById("messageInput")
+    .addEventListener("keydown", function(event) {
+
+        if (event.key === "Enter") {
+            sendMessage();
+        }
+
+    });
+
+</script>
+
+</body>
+</html>

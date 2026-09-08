@@ -88,3 +88,10 @@ def get_problem_resources(problem_id: str):
         "problem": problem,
         "resources": find_resource_matches(problem)
     }
+
+
+from backend.agriculture_engine import get_agriculture_data
+
+@app.get("/agriculture")
+def agriculture():
+    return get_agriculture_data()

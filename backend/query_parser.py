@@ -1,6 +1,11 @@
 import re
 
 
+def contains_term(query, term):
+    pattern = r"\b" + re.escape(term.lower()) + r"\b"
+    return re.search(pattern, query.lower()) is not None
+
+
 def parse_query(query: str):
     query_lower = query.lower()
 
@@ -36,15 +41,15 @@ def parse_query(query: str):
     ]
 
     for skill in known_skills:
-        if skill in query_lower:
+        if contains_term(query_lower, skill):
             skills.append(skill)
 
     for category in known_categories:
-        if category in query_lower:
+        if contains_term(query_lower, category):
             categories.append(category)
 
     for city in known_locations:
-        if city in query_lower:
+        if contains_term(query_lower, city):
             location = city.title()
 
     return {

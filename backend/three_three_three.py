@@ -16,7 +16,8 @@ ROUTES = {
 
 def classify_333_intent(message: str) -> str:
     """
-    Classify a 333 user message into one of the three core routes.
+    Classify a 333 message into INFORMATION, ASSISTANCE,
+    EMERGENCY, or UNKNOWN.
 
     This is a deterministic prototype classifier.
     """
@@ -31,6 +32,8 @@ def classify_333_intent(message: str) -> str:
         "danger",
         "bleeding",
         "unconscious",
+        "fire",
+        "critical",
     ]
 
     assistance_keywords = [
@@ -43,6 +46,8 @@ def classify_333_intent(message: str) -> str:
         "get a medicine",
         "apply",
         "access",
+        "solve",
+        "support",
     ]
 
     information_keywords = [
@@ -94,14 +99,120 @@ def _new_session(
     }
 
 
+def _route_message(route: str) -> str:
+    """
+    Human-readable explanation of the route selected by SANG.
+    """
+
+    if route == "INFORMATION":
+        return (
+            "INFORMATION route activated. "
+            "SANG will provide relevant information, resources, "
+            "and available opportunities."
+        )
+
+    if route == "ASSISTANCE":
+        return (
+            "ASSISTANCE route activated. "
+            "SANG will identify relevant people, resources, "
+            "and opportunities that can help."
+        )
+
+    if route == "EMERGENCY":
+        return (
+            "EMERGENCY route activated. "
+            "Prioritize immediate emergency-service or human escalation."
+        )
+
+    return (
+        "The request could not be safely classified. "
+        "Escalate to human assistance."
+    )
+
+
+def _routed_session(
+    message: str,
+    route: str,
+    result=None,
+) -> Dict:
+    """
+    Create a completed/routed 333 session.
+    """
+
+    return {
+        "session_id": str(uuid4()),
+        "channel": "333",
+        "route": route,
+        "original_message": message,
+        "missing_information": [],
+        "status": "ESCALATE" if route == "EMERGENCY" else "ROUTED",
+        "action": _route_message(route),
+        "prompt": None,
+        "result": result,
+    }
+
+
 def start_333_session(message: str) -> Dict:
     """
-    Start a new simulated 333 interaction.
+    Start a simulated 333 interaction.
     """
 
     route = classify_333_intent(message)
 
-    if route in {"INFORMATION", "ASSISTANCE"}:
+    # ---------------------------------------------------------
+    # EMERGENCY
+    # ---------------------------------------------------------
+
+    if route == "EMERGENCY":
+        return _routed_session(
+            message=message,
+            route=route,
+            result=None,
+        )
+
+    # ---------------------------------------------------------
+    # UNKNOWN
+    # ---------------------------------------------------------
+
+    if route == "UNKNOWN":
+        return {
+            "session_id": str(uuid4()),
+            "channel": "333",
+            "route": "UNKNOWN",
+            "original_message": message,
+            "missing_information": [],
+            "status": "ESCALATE",
+            "action": (
+                "The request could not be safely classified. "
+                "Escalate to human assistance."
+            ),
+            "prompt": (
+                "I could not safely understand the request. "
+                "Please try again or ask for human assistance."
+            ),
+            "result": None,
+        }
+
+    # ---------------------------------------------------------
+    # INFORMATION
+    # ---------------------------------------------------------
+
+    if route == "INFORMATION":
+        parsed = parse_agriculture_query(message)
+
+        result = query_agriculture(message)
+
+        return _routed_session(
+            message=message,
+            route=route,
+            result=result,
+        )
+
+    # ---------------------------------------------------------
+    # ASSISTANCE
+    # ---------------------------------------------------------
+
+    if route == "ASSISTANCE":
         parsed = parse_agriculture_query(message)
 
         if parsed["problem"] and not parsed["location_mentioned"]:
@@ -112,45 +223,23 @@ def start_333_session(message: str) -> Dict:
             )
 
             session["action"] = (
-                "Ask the user for their location before routing the request."
+                "Ask the user for their location before routing "
+                "the request to matching and assistance services."
             )
+
             session["prompt"] = (
                 "I can help with that. What city or village are you in?"
             )
 
             return session
 
-        return {
-            "session_id": str(uuid4()),
-            "channel": "333",
-            "route": route,
-            "original_message": message,
-            "missing_information": [],
-            "status": "ROUTED",
-            "action": (
-                "Route the request to SANG information and knowledge services."
-                if route == "INFORMATION"
-                else "Route the request to SANG matching and assistance services."
-            ),
-            "prompt": None,
-            "result": query_agriculture(message),
-        }
+        result = query_agriculture(message)
 
-    if route == "EMERGENCY":
-        return {
-            "session_id": str(uuid4()),
-            "channel": "333",
-            "route": route,
-            "original_message": message,
-            "missing_information": [],
-            "status": "ESCALATE",
-            "action": (
-                "Prioritize immediate emergency-service or human escalation. "
-                "Do not depend on a long AI conversation."
-            ),
-            "prompt": None,
-            "result": None,
-        }
+        return _routed_session(
+            message=message,
+            route=route,
+            result=result,
+        )
 
     return {
         "session_id": str(uuid4()),
@@ -178,7 +267,9 @@ def continue_333_session(session: Dict, message: str) -> Dict:
             **session,
             "follow_up_message": message,
             "status": "COMPLETED",
-            "action": "This 333 session does not require additional information.",
+            "action": (
+                "This 333 session does not require additional information."
+            ),
         }
 
     combined_message = (

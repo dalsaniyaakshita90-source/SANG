@@ -33,11 +33,32 @@ def parse_agriculture_query(query: str):
     query_lower = query.lower()
 
     location = None
+    location_mentioned = False
 
+    # First detect supported locations.
     for city in KNOWN_LOCATIONS:
         if re.search(r"\b" + re.escape(city) + r"\b", query_lower):
             location = city.title()
+            location_mentioned = True
             break
+
+    # If no supported location was found, detect whether
+    # the user explicitly mentioned another location.
+    if not location_mentioned:
+        location_patterns = [
+            r"\bin ([A-Za-z]+)\b",
+            r"\bfrom ([A-Za-z]+)\b",
+            r"\bat ([A-Za-z]+)\b",
+            r"\bnear ([A-Za-z]+)\b",
+        ]
+
+        for pattern in location_patterns:
+            match = re.search(pattern, query_lower)
+
+            if match:
+                location = match.group(1).title()
+                location_mentioned = True
+                break
 
     problem_title = None
 
@@ -53,6 +74,7 @@ def parse_agriculture_query(query: str):
     return {
         "original_query": query,
         "location": location,
+        "location_mentioned": location_mentioned,
         "problem": problem_title,
     }
 
@@ -68,12 +90,30 @@ def query_agriculture(query: str):
             "results": [],
         }
 
+    # If the user explicitly mentioned a location that is not
+    # supported by the current prototype, reject the query.
+    supported_locations = [
+        city.title()
+        for city in KNOWN_LOCATIONS
+    ]
+
+    if (
+        parsed["location_mentioned"]
+        and parsed["location"] not in supported_locations
+    ):
+        return {
+            "query": query,
+            "understood": parsed,
+            "results": [],
+        }
+
     matching_problems = []
 
     for problem in problems:
         location_match = (
-            parsed["location"] is None
-            or problem.location.lower() == parsed["location"].lower()
+            not parsed["location_mentioned"]
+            or problem.location.lower()
+            == parsed["location"].lower()
         )
 
         problem_match = (

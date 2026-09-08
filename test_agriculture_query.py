@@ -61,7 +61,8 @@ def test_unknown_location():
         "My crop has a pest problem in Mumbai"
     )
 
-    assert result["understood"]["location"] is None
+    assert result["understood"]["location"] == "Mumbai"
+    assert result["understood"]["location_mentioned"] is True
     assert result["understood"]["problem"] == "Crop Pest Infestation"
 
     assert result["results"] == []

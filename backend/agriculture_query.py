@@ -14,11 +14,13 @@ KNOWN_LOCATIONS = [
     "surat",
 ]
 
+
 PROBLEM_KEYWORDS = {
     "pest": "Crop Pest Infestation",
     "insect": "Crop Pest Infestation",
     "insects": "Crop Pest Infestation",
     "pest infestation": "Crop Pest Infestation",
+    "pest control": "Crop Pest Infestation",
 
     "irrigation": "Irrigation Challenge",
     "water": "Irrigation Challenge",
@@ -35,16 +37,25 @@ def parse_agriculture_query(query: str):
     location = None
     location_mentioned = False
 
-    # First detect supported locations.
+    # ---------------------------------------------------------
+    # DETECT SUPPORTED LOCATIONS
+    # ---------------------------------------------------------
+
     for city in KNOWN_LOCATIONS:
-        if re.search(r"\b" + re.escape(city) + r"\b", query_lower):
+        if re.search(
+            r"\b" + re.escape(city) + r"\b",
+            query_lower,
+        ):
             location = city.title()
             location_mentioned = True
             break
 
-    # If no supported location was found, detect whether
-    # the user explicitly mentioned another location.
+    # ---------------------------------------------------------
+    # DETECT EXPLICITLY MENTIONED OTHER LOCATIONS
+    # ---------------------------------------------------------
+
     if not location_mentioned:
+
         location_patterns = [
             r"\bin ([A-Za-z]+)\b",
             r"\bfrom ([A-Za-z]+)\b",
@@ -53,12 +64,22 @@ def parse_agriculture_query(query: str):
         ]
 
         for pattern in location_patterns:
-            match = re.search(pattern, query_lower)
+
+            match = re.search(
+                pattern,
+                query_lower,
+            )
 
             if match:
+
                 location = match.group(1).title()
                 location_mentioned = True
+
                 break
+
+    # ---------------------------------------------------------
+    # DETECT AGRICULTURAL PROBLEM
+    # ---------------------------------------------------------
 
     problem_title = None
 
@@ -67,8 +88,14 @@ def parse_agriculture_query(query: str):
         key=lambda item: len(item[0]),
         reverse=True,
     ):
-        if re.search(r"\b" + re.escape(keyword) + r"\b", query_lower):
+
+        if re.search(
+            r"\b" + re.escape(keyword) + r"\b",
+            query_lower,
+        ):
+
             problem_title = title
+
             break
 
     return {
@@ -82,54 +109,95 @@ def parse_agriculture_query(query: str):
 def query_agriculture(query: str):
     parsed = parse_agriculture_query(query)
 
-    # We need to understand an actual supported agricultural problem.
+    # ---------------------------------------------------------
+    # NO AGRICULTURAL PROBLEM UNDERSTOOD
+    # ---------------------------------------------------------
+
     if not parsed["problem"]:
+
         return {
             "query": query,
             "understood": parsed,
             "results": [],
         }
 
-    # If the user explicitly mentioned a location that is not
-    # supported by the current prototype, reject the query.
+    # ---------------------------------------------------------
+    # LOCATION REQUIRED
+    # ---------------------------------------------------------
+
+    if not parsed["location_mentioned"]:
+
+        return {
+            "query": query,
+            "understood": parsed,
+            "results": [],
+            "needs_location": True,
+            "prompt": (
+                "I understand the agricultural problem. "
+                "What city or village are you in?"
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # REJECT UNSUPPORTED LOCATION
+    # ---------------------------------------------------------
+
     supported_locations = [
         city.title()
         for city in KNOWN_LOCATIONS
     ]
 
-    if (
-        parsed["location_mentioned"]
-        and parsed["location"] not in supported_locations
-    ):
+    if parsed["location"] not in supported_locations:
+
         return {
             "query": query,
             "understood": parsed,
             "results": [],
+            "unsupported_location": True,
+            "prompt": (
+                "I currently need a supported prototype location "
+                "to find a verified local match."
+            ),
         }
+
+    # ---------------------------------------------------------
+    # FIND EXACT PROBLEM + LOCATION
+    # ---------------------------------------------------------
 
     matching_problems = []
 
     for problem in problems:
+
         location_match = (
-            not parsed["location_mentioned"]
-            or problem.location.lower()
+            problem.location.lower()
             == parsed["location"].lower()
         )
 
         problem_match = (
-            problem.title == parsed["problem"]
+            problem.title
+            == parsed["problem"]
         )
 
         if location_match and problem_match:
+
             matching_problems.append(problem)
+
+    # ---------------------------------------------------------
+    # BUILD MATCH RESULTS
+    # ---------------------------------------------------------
 
     results = []
 
     for problem in matching_problems:
 
+        # -----------------------------------------------------
+        # HELPER MATCHING
+        # -----------------------------------------------------
+
         helper_matches = []
 
         for helper in helpers:
+
             helper_skills = {
                 skill.lower()
                 for skill in helper.skills
@@ -140,8 +208,14 @@ def query_agriculture(query: str):
                 for skill in problem.required_skills
             }
 
+            expertise_overlap = (
+                helper_skills.intersection(
+                    required_skills
+                )
+            )
+
             expertise_match = bool(
-                helper_skills.intersection(required_skills)
+                expertise_overlap
             )
 
             location_match = (
@@ -150,59 +224,153 @@ def query_agriculture(query: str):
             )
 
             if expertise_match and location_match:
-                helper_matches.append({
-                    "id": helper.id,
-                    "name": helper.name,
-                    "location": helper.location,
-                    "skills": helper.skills,
-                    "reason": (
-                        "Relevant expertise and same-location match."
+
+                reasons = [
+                    f"Same location: {problem.location}",
+                    (
+                        "Relevant expertise: "
+                        + ", ".join(
+                            sorted(expertise_overlap)
+                        )
                     ),
+                    (
+                        "Directly related to "
+                        f"{problem.title.lower()}."
+                    ),
+                ]
+
+                helper_matches.append({
+
+                    "id": helper.id,
+
+                    "name": helper.name,
+
+                    "location": helper.location,
+
+                    "skills": helper.skills,
+
+                    "reason": (
+                        "Same location + relevant expertise "
+                        "+ direct problem relevance."
+                    ),
+
+                    "reasons": reasons,
+
                 })
 
-        resource_matches = [
-            {
-                "id": resource.id,
-                "name": resource.name,
-                "type": resource.resource_type,
-                "reason": (
-                    "Resource matches the problem location."
-                ),
-            }
-            for resource in resources
-            if resource.location.lower()
-            == problem.location.lower()
-        ]
+        # -----------------------------------------------------
+        # RESOURCE MATCHING
+        # -----------------------------------------------------
 
-        opportunity_matches = [
-            {
-                "id": opportunity.id,
-                "title": opportunity.title,
-                "organization": opportunity.organization,
-                "reason": (
-                    "Opportunity matches the agricultural problem context "
-                    "and location."
+        resource_matches = []
+
+        for resource in resources:
+
+            location_match = (
+                resource.location.lower()
+                == problem.location.lower()
+            )
+
+            if not location_match:
+                continue
+
+            reasons = [
+                f"Available in {problem.location}",
+                (
+                    "Relevant to "
+                    f"{problem.title.lower()}."
                 ),
-            }
-            for opportunity in opportunities
-            if opportunity.location.lower()
-            == problem.location.lower()
-        ]
+            ]
+
+            resource_matches.append({
+
+                "id": resource.id,
+
+                "name": resource.name,
+
+                "type": resource.resource_type,
+
+                "reason": (
+                    "Location match + direct problem relevance."
+                ),
+
+                "reasons": reasons,
+
+            })
+
+        # -----------------------------------------------------
+        # OPPORTUNITY MATCHING
+        # -----------------------------------------------------
+
+        opportunity_matches = []
+
+        for opportunity in opportunities:
+
+            location_match = (
+                opportunity.location.lower()
+                == problem.location.lower()
+            )
+
+            if not location_match:
+                continue
+
+            reasons = [
+                f"Available in {problem.location}",
+                (
+                    "Relevant to "
+                    f"{problem.title.lower()}."
+                ),
+            ]
+
+            opportunity_matches.append({
+
+                "id": opportunity.id,
+
+                "title": opportunity.title,
+
+                "organization": opportunity.organization,
+
+                "reason": (
+                    "Location match + agricultural "
+                    "context match."
+                ),
+
+                "reasons": reasons,
+
+            })
+
+        # -----------------------------------------------------
+        # FINAL RESULT
+        # -----------------------------------------------------
 
         results.append({
+
             "problem": {
+
                 "id": problem.id,
+
                 "title": problem.title,
+
                 "description": problem.description,
+
                 "location": problem.location,
+
             },
+
             "helpers": helper_matches,
+
             "resources": resource_matches,
+
             "opportunities": opportunity_matches,
+
         })
 
     return {
+
         "query": query,
+
         "understood": parsed,
+
         "results": results,
+
     }

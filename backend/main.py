@@ -11,6 +11,8 @@ from backend.three_three_three import (
     continue_333_session,
 )
 
+from backend.voice_pipeline import build_voice_pipeline
+
 
 app = FastAPI(
     title="SANG",
@@ -136,6 +138,24 @@ def three_three_three(request: ThreeThreeThreeRequest):
     active_333_sessions[session["session_id"]] = session
 
     return session
+
+
+@app.post("/333/voice")
+def three_three_three_voice(request: ThreeThreeThreeRequest):
+    session = start_333_session(request.message)
+
+    active_333_sessions[session["session_id"]] = session
+
+    route = session.get("route", "UNKNOWN")
+
+    return {
+        **session,
+        "voice_pipeline": build_voice_pipeline(
+            request.message,
+            route,
+            session,
+        ),
+    }
 
 
 @app.post("/333/{session_id}")

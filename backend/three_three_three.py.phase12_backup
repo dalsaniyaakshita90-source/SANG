@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+﻿from typing import Dict, Optional
 from uuid import uuid4
 
 from backend.information_layer import answer_information
@@ -12,8 +12,8 @@ from backend.agriculture_query import (
 from backend.language_layer import (
     process_language,
     get_response_language,
+    translate_response,
 )
-
 
 ROUTES = {
     "information": "INFORMATION",
@@ -21,123 +21,180 @@ ROUTES = {
     "emergency": "EMERGENCY",
 }
 
-DEFAULT_COUNTRY = "IN"
-
 
 def classify_333_intent(message: str) -> str:
+    """
+    Classify a 333 message into INFORMATION, ASSISTANCE,
+    EMERGENCY, or UNKNOWN.
+
+    Agriculture problem statements are treated as ASSISTANCE
+    when the user is reporting a problem or asking for help.
+    General agricultural questions remain INFORMATION.
+    """
+
     text = message.lower().strip()
 
+    # ---------------------------------------------------------
+    # EMERGENCY
+    # ---------------------------------------------------------
+
     emergency_keywords = [
-        "emergency", "urgent", "help now", "accident", "danger",
-        "bleeding", "unconscious", "fire", "critical",
+        "emergency",
+        "urgent",
+        "help now",
+        "accident",
+        "danger",
+        "bleeding",
+        "unconscious",
+        "fire",
+        "critical",
     ]
 
     if any(keyword in text for keyword in emergency_keywords):
         return ROUTES["emergency"]
 
+    # ---------------------------------------------------------
+    # EXPLICIT INFORMATION QUESTIONS
+    # ---------------------------------------------------------
+
     information_question_patterns = [
-        "what is", "what are", "tell me about", "information about",
-        "what does", "what do", "why is", "why are", "where is",
-        "how does", "how do",
+        "what is",
+        "what are",
+        "tell me about",
+        "information about",
+        "what does",
+        "what do",
+        "why is",
+        "why are",
+        "where is",
+        "how does",
+        "how do",
     ]
 
-    if any(pattern in text for pattern in information_question_patterns):
+    if any(
+        pattern in text
+        for pattern in information_question_patterns
+    ):
         return ROUTES["information"]
 
+    # ---------------------------------------------------------
+    # AGRICULTURE ASSISTANCE
+    # ---------------------------------------------------------
+
     agriculture_problem_keywords = [
-        "pest problem", "pest infestation", "pest control",
-        "crop pest problem", "crop problem", "crop disease",
-        "irrigation problem", "water problem", "watering problem",
-        "soil problem", "soil health problem", "farmer problem",
+        "pest problem",
+        "pest infestation",
+        "pest control",
+        "crop pest problem",
+        "crop problem",
+        "crop disease",
+        "irrigation problem",
+        "water problem",
+        "watering problem",
+        "soil problem",
+        "soil health problem",
+        "farmer problem",
     ]
 
     agriculture_help_keywords = [
-        "help with pest", "help regarding pest", "help for pest",
-        "help with irrigation", "help regarding irrigation",
-        "help with soil", "help regarding soil",
-        "need help with pest", "need help regarding pest",
-        "need help with irrigation", "need help regarding irrigation",
+        "help with pest",
+        "help regarding pest",
+        "help for pest",
+        "help with irrigation",
+        "help regarding irrigation",
+        "help with soil",
+        "help regarding soil",
+        "need help with pest",
+        "need help regarding pest",
+        "need help with irrigation",
+        "need help regarding irrigation",
     ]
 
-    if any(keyword in text for keyword in agriculture_problem_keywords):
+    if any(
+        keyword in text
+        for keyword in agriculture_problem_keywords
+    ):
         return ROUTES["assistance"]
 
-    if any(keyword in text for keyword in agriculture_help_keywords):
+    if any(
+        keyword in text
+        for keyword in agriculture_help_keywords
+    ):
         return ROUTES["assistance"]
+
+    # ---------------------------------------------------------
+    # GENERAL ASSISTANCE
+    # ---------------------------------------------------------
 
     assistance_keywords = [
-        "help me", "can you help", "need help", "find someone",
-        "connect me", "get medicine", "get a medicine", "apply",
-        "access", "solve", "support",
+        "help me",
+        "can you help",
+        "need help",
+        "find someone",
+        "connect me",
+        "get medicine",
+        "get a medicine",
+        "apply",
+        "access",
+        "solve",
+        "support",
     ]
 
     if any(keyword in text for keyword in assistance_keywords):
         return ROUTES["assistance"]
 
+    # ---------------------------------------------------------
+    # GENERAL INFORMATION
+    # ---------------------------------------------------------
+
     information_keywords = [
-        "information", "scheme", "market", "price", "weather",
-        "hospital", "agriculture", "farmer", "crop", "pest",
-        "irrigation", "soil",
+        "information",
+        "scheme",
+        "market",
+        "price",
+        "weather",
+        "hospital",
+        "agriculture",
+        "farmer",
+        "crop",
+        "pest",
+        "irrigation",
+        "soil",
     ]
 
-    if any(keyword in text for keyword in information_keywords):
+    if any(
+        keyword in text
+        for keyword in information_keywords
+    ):
         return ROUTES["information"]
 
     return "UNKNOWN"
-
-
-def extract_location_context(
-    message: str,
-    agriculture_result: Optional[Dict] = None,
-) -> Dict:
-    location = None
-
-    if agriculture_result:
-        understood = agriculture_result.get("understood", {})
-        location = understood.get("location")
-
-    return {
-        "country_code": DEFAULT_COUNTRY,
-        "country": "India",
-        "state": "Gujarat" if location in {
-            "Rajkot",
-            "Ahmedabad",
-            "Surat",
-        } else None,
-        "city_or_village": location,
-        "source": "query",
-    }
 
 
 def _new_session(
     message: str,
     route: str,
     missing_information: Optional[list] = None,
-    language_data: Optional[Dict] = None,
 ) -> Dict:
-    language_data = language_data or process_language(message)
+    """
+    Create a lightweight in-memory 333 session.
+    """
 
     return {
         "session_id": str(uuid4()),
         "channel": "333",
         "route": route,
         "original_message": message,
-        "normalized_message": language_data["normalized_text"],
-        "language": language_data["language"],
-        "language_name": language_data["language_name"],
-        "location_context": {
-            "country_code": DEFAULT_COUNTRY,
-            "country": "India",
-            "state": None,
-            "city_or_village": None,
-            "source": "not_resolved",
-        },
         "missing_information": missing_information or [],
         "status": "NEEDS_INFORMATION",
     }
 
 
 def _route_message(route: str) -> str:
+    """
+    Human-readable explanation of the route selected by SANG.
+    """
+
     if route == "INFORMATION":
         return (
             "INFORMATION route activated. "
@@ -168,25 +225,16 @@ def _routed_session(
     message: str,
     route: str,
     result=None,
-    language_data: Optional[Dict] = None,
 ) -> Dict:
-    language_data = language_data or process_language(message)
-    language = get_response_language(language_data["language"])
-
-    location_context = extract_location_context(
-        message,
-        result if route == "ASSISTANCE" else None,
-    )
+    """
+    Create a completed/routed 333 session.
+    """
 
     return {
         "session_id": str(uuid4()),
         "channel": "333",
         "route": route,
         "original_message": message,
-        "normalized_message": language_data["normalized_text"],
-        "language": language,
-        "language_name": language_data["language_name"],
-        "location_context": location_context,
         "missing_information": [],
         "status": "ESCALATE" if route == "EMERGENCY" else "ROUTED",
         "action": _route_message(route),
@@ -194,35 +242,33 @@ def _routed_session(
         "result": result,
     }
 
+    language_data = process_language(message)
+    language = language_data["language"]
+    normalized_message = language_data["normalized_text"]
 
 def start_333_session(message: str) -> Dict:
-    language_data = process_language(message)
-    normalized_message = language_data["normalized_text"]
+    """
+    Start a simulated 333 interaction.
+    """
 
     route = classify_333_intent(normalized_message)
 
-    if route == "EMERGENCY":
-        result = identify_emergency(
-            message,
-            country_code=DEFAULT_COUNTRY,
-        )
+    # ---------------------------------------------------------
+    # EMERGENCY
+    # ---------------------------------------------------------
 
-        session = _routed_session(
+    if route == "EMERGENCY":
+        result = identify_emergency(message)
+
+        return _routed_session(
             message=message,
             route=route,
             result=result,
-            language_data=language_data,
         )
 
-        session["location_context"] = {
-            "country_code": DEFAULT_COUNTRY,
-            "country": "India",
-            "state": None,
-            "city_or_village": None,
-            "source": "default_country",
-        }
-
-        return session
+    # ---------------------------------------------------------
+    # UNKNOWN
+    # ---------------------------------------------------------
 
     if route == "UNKNOWN":
         return {
@@ -230,16 +276,6 @@ def start_333_session(message: str) -> Dict:
             "channel": "333",
             "route": "UNKNOWN",
             "original_message": message,
-            "normalized_message": normalized_message,
-            "language": language_data["language"],
-            "language_name": language_data["language_name"],
-            "location_context": {
-                "country_code": DEFAULT_COUNTRY,
-                "country": "India",
-                "state": None,
-                "city_or_village": None,
-                "source": "not_resolved",
-            },
             "missing_information": [],
             "status": "ESCALATE",
             "action": (
@@ -253,25 +289,34 @@ def start_333_session(message: str) -> Dict:
             "result": None,
         }
 
+    # ---------------------------------------------------------
+    # INFORMATION
+    # ---------------------------------------------------------
+
     if route == "INFORMATION":
+
         result = answer_information(message)
 
         return _routed_session(
             message=message,
             route=route,
             result=result,
-            language_data=language_data,
         )
 
+    # ---------------------------------------------------------
+    # ASSISTANCE
+    # ---------------------------------------------------------
+
     if route == "ASSISTANCE":
-        parsed = parse_agriculture_query(normalized_message)
+
+        parsed = parse_agriculture_query(message)
 
         if parsed["problem"] and not parsed["location_mentioned"]:
+
             session = _new_session(
                 message=message,
                 route=route,
                 missing_information=["location"],
-                language_data=language_data,
             )
 
             session["action"] = (
@@ -285,13 +330,12 @@ def start_333_session(message: str) -> Dict:
 
             return session
 
-        result = query_agriculture(normalized_message)
+        result = query_agriculture(message)
 
         return _routed_session(
             message=message,
             route=route,
             result=result,
-            language_data=language_data,
         )
 
     return {
@@ -299,16 +343,6 @@ def start_333_session(message: str) -> Dict:
         "channel": "333",
         "route": "UNKNOWN",
         "original_message": message,
-        "normalized_message": normalized_message,
-        "language": language_data["language"],
-        "language_name": language_data["language_name"],
-        "location_context": {
-            "country_code": DEFAULT_COUNTRY,
-            "country": "India",
-            "state": None,
-            "city_or_village": None,
-            "source": "not_resolved",
-        },
         "missing_information": [],
         "status": "ESCALATE",
         "action": (
@@ -324,7 +358,12 @@ def continue_333_session(
     session: Dict,
     message: str,
 ) -> Dict:
+    """
+    Continue an existing 333 session using the user's follow-up message.
+    """
+
     if session["status"] != "NEEDS_INFORMATION":
+
         return {
             **session,
             "follow_up_message": message,
@@ -334,20 +373,17 @@ def continue_333_session(
             ),
         }
 
-    combined_message = f"{session['original_message']} {message}"
+    combined_message = (
+        f"{session['original_message']} {message}"
+    )
 
-    language_data = process_language(combined_message)
-    normalized_message = language_data["normalized_text"]
-
-    result = query_agriculture(normalized_message)
+    result = query_agriculture(combined_message)
 
     if result["results"]:
-        updated_session = {
+
+        return {
             **session,
             "follow_up_message": message,
-            "normalized_message": normalized_message,
-            "language": language_data["language"],
-            "language_name": language_data["language_name"],
             "status": "ROUTED",
             "missing_information": [],
             "action": (
@@ -358,21 +394,10 @@ def continue_333_session(
             "result": result,
         }
 
-        updated_session["location_context"] = extract_location_context(
-            combined_message,
-            result,
-        )
-
-        return updated_session
-
     return {
         **session,
         "follow_up_message": message,
-        "normalized_message": normalized_message,
-        "language": language_data["language"],
-        "language_name": language_data["language_name"],
         "status": "NEEDS_INFORMATION",
-        "missing_information": ["location"],
         "action": (
             "The additional information was not sufficient to safely "
             "resolve the request. Ask for clarification or escalate."
@@ -385,4 +410,14 @@ def continue_333_session(
 
 
 def route_333(message: str) -> Dict:
+    """
+    Backward-compatible single-message 333 routing function.
+    """
+
     return start_333_session(message)
+
+
+
+
+
+

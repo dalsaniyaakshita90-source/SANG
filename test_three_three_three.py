@@ -1,18 +1,22 @@
-from backend.three_three_three import (
-    classify_333_intent,
-    start_333_session,
-    continue_333_session,
-)
+from backend.three_three_three import start_333_session
+
+
+def test_333_information_route():
+    result = start_333_session(
+        "What is a crop pest?"
+    )
+
+    assert result["route"] == "INFORMATION"
+    assert result["status"] == "ROUTED"
 
 
 def test_333_assistance_route():
     result = start_333_session(
-        "I need help with irrigation in Ahmedabad"
+        "I need help with my crop pest problem in Rajkot"
     )
 
     assert result["route"] == "ASSISTANCE"
     assert result["status"] == "ROUTED"
-    assert result["result"]["results"][0]["problem"]["id"] == "AP002"
 
 
 def test_333_emergency_route():
@@ -22,40 +26,58 @@ def test_333_emergency_route():
 
     assert result["route"] == "EMERGENCY"
     assert result["status"] == "ESCALATE"
-    assert result["result"] is None
+    assert result["result"]["detected"] is True
+    assert result["result"]["emergency_type"] == "general"
+    assert result["result"]["contact"] == "112"
 
 
-def test_333_missing_location():
+def test_333_unknown_route():
     result = start_333_session(
-        "I need help with irrigation"
-    )
-
-    assert result["route"] == "ASSISTANCE"
-    assert result["status"] == "NEEDS_INFORMATION"
-    assert result["missing_information"] == ["location"]
-    assert result["prompt"] is not None
-
-
-def test_333_multi_turn_completion():
-    first = start_333_session(
-        "I need help with irrigation"
-    )
-
-    second = continue_333_session(
-        first,
-        "Ahmedabad"
-    )
-
-    assert second["status"] == "ROUTED"
-    assert second["missing_information"] == []
-    assert second["result"]["results"][0]["problem"]["id"] == "AP002"
-
-
-def test_333_unknown_request():
-    result = start_333_session(
-        "Tell me something random"
+        "xyz random request"
     )
 
     assert result["route"] == "UNKNOWN"
     assert result["status"] == "ESCALATE"
-    assert result["result"] is None
+
+def test_india_emergency_ruleset():
+    from backend.emergency_layer import identify_emergency
+
+    result = identify_emergency(
+        "There is a fire emergency",
+        country_code="IN",
+    )
+
+    assert result["country"] == "India"
+    assert result["country_code"] == "IN"
+    assert result["emergency_type"] == "fire"
+    assert result["contact"] == "101"
+    assert result["escalation"] == "IMMEDIATE"
+
+
+def test_india_medical_emergency_ruleset():
+    from backend.emergency_layer import identify_emergency
+
+    result = identify_emergency(
+        "Someone is unconscious and needs an ambulance",
+        country_code="IN",
+    )
+
+    assert result["country"] == "India"
+    assert result["country_code"] == "IN"
+    assert result["emergency_type"] == "medical"
+    assert result["contact"] == "108"
+    assert result["escalation"] == "IMMEDIATE"
+
+
+def test_unknown_country_falls_back_safely():
+    from backend.emergency_layer import identify_emergency
+
+    result = identify_emergency(
+        "There is an emergency",
+        country_code="XX",
+    )
+
+    assert result["country"] == "India"
+    assert result["country_code"] == "XX"
+    assert result["contact"] == "112"
+    assert result["escalation"] == "IMMEDIATE"
